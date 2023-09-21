@@ -1,0 +1,17 @@
+# 所有文本文件统一使用 LF
+* text=auto eol=lf
+
+# 明确指定文本文件
+*.java text eol=lf
+*.xml text eol=lf
+*.csv text eol=lf
+*.json text eol=lf
+*.properties text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+
+# 二进制文件不做转换
+*.dat binary
+*.nbt binary
+*.png binary
+*.jar binary
