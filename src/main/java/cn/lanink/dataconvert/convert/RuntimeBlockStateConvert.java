@@ -1,7 +1,6 @@
 package cn.lanink.dataconvert.convert;
 
 import cn.lanink.dataconvert.utils.NBTIO1;
-import cn.nukkit.Server;
 import cn.nukkit.nbt.NBTIO;
 import cn.nukkit.nbt.tag.CompoundTag;
 import cn.nukkit.nbt.tag.ListTag;
@@ -11,7 +10,6 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
 import java.io.*;
-import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
@@ -70,7 +68,7 @@ public class RuntimeBlockStateConvert {
             throw new AssertionError(e);
         }
 
-        ListTag<CompoundTag> statesList = new ListTag<>();
+        ListTag<CompoundTag> newTagList = new ListTag<>();
 
         int data = 0;
         String lastBlockName = null;
@@ -81,47 +79,46 @@ public class RuntimeBlockStateConvert {
                 continue; //跳过未实现的方块
             }
 
-            ArrayList<Tag> newBlockTags = new ArrayList<>();
-            for (Tag tag : block.getCompound("states").getAllTags()) {
-                newBlockTags.add(tag);
-            }
+            ArrayList<Tag> newBlockStates = new ArrayList<>(block.getCompound("states").getAllTags());
 
             CompoundTag equalsTag = null;
             for (CompoundTag tag : oldTagList) {
                 if (equalsTag != null) {
-                    continue;
+                    break;
                 }
-                CompoundTag oldBlockTags = tag.getCompound("states");
-                if (newBlockTags.isEmpty() && oldBlockTags.isEmpty()) {
+                CompoundTag oldBlockStates = tag.getCompound("states");
+                if (newBlockStates.isEmpty() && oldBlockStates.isEmpty()) {
                     equalsTag = tag;
-                    continue;
-                }
-                for (Tag tag1 : newBlockTags) {
-                    if (oldBlockTags.contains(tag1.getName()) && oldBlockTags.get(tag1.getName()).equals(tag1)) {
-                        equalsTag = tag;
-                        break;
-                    } else {
-                        Object object = tag1.parseValue();
+                    break;
+                } else {
+                    for (Tag tag1 : newBlockStates) {
+                        if (oldBlockStates.contains(tag1.getName()) && oldBlockStates.get(tag1.getName()).equals(tag1)) {
+                            equalsTag = tag;
+                            break;
+                        }
+
+                        /*Object object = tag1.parseValue();
                         if (tag1 instanceof CompoundTag compoundTag && compoundTag.getTags().isEmpty()
                                 || tag1 instanceof ListTag<?> listTag && listTag.getAll().isEmpty()
                                 || object instanceof Number number && number.intValue() == 0
                                 || object instanceof String string && string.isBlank()
                                 || object instanceof Array array && Array.getLength(array) == 0) {
-                            equalsTag = tag;
-                            break;
-                        }
+
+                        }*/
                     }
                 }
             }
 
             if (equalsTag != null) {
-                equalsTag.putInt("runtimeId", block.getInt("runtimeId"));
-                statesList.add(equalsTag);
+                CompoundTag copy = equalsTag.copy();
+                copy.putInt("runtimeId", block.getInt("runtimeId"));
+                copy.putInt("version", block.getInt("version"));
+                newTagList.add(copy);
             }
         }
 
         OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("src/main/resources/Nukkit_Data/new_runtime_block_states.dat"));
-        NBTIO1.writeGZIPCompressed(statesList, outputStream, ByteOrder.BIG_ENDIAN);
+        NBTIO1.writeGZIPCompressed(newTagList, outputStream, ByteOrder.BIG_ENDIAN);
     }
 
     private static List<CompoundTag> getBlockByName(ListTag<CompoundTag> tags, String name) {
