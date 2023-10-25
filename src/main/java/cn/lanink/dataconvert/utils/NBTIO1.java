@@ -1,7 +1,6 @@
 package cn.lanink.dataconvert.utils;
 
 import cn.nukkit.item.Item;
-import cn.nukkit.item.ItemID;
 import cn.nukkit.nbt.stream.FastByteArrayOutputStream;
 import cn.nukkit.nbt.stream.NBTInputStream;
 import cn.nukkit.nbt.stream.NBTOutputStream;
@@ -24,9 +23,9 @@ import java.util.zip.GZIPInputStream;
  * A Named Binary Tag library for Nukkit Project
  */
 @Log4j2
-public class NBTIO {
+public class NBTIO1 {
 
-    public static CompoundTag putItemHelper(Item item) {
+    /*public static CompoundTag putItemHelper(Item item) {
         return putItemHelper(item, null);
     }
 
@@ -49,9 +48,9 @@ public class NBTIO {
         }
 
         return tag;
-    }
+    }*/
 
-    public static Item getItemHelper(CompoundTag tag) {
+    /*public static Item getItemHelper(CompoundTag tag) {
         if (!tag.contains("Count")) {
             return Item.get(0);
         }
@@ -86,7 +85,7 @@ public class NBTIO {
             item.setNamedTag(compoundTag);
         }
         return item;
-    }
+    }*/
 
     private static Item fixWoolItem(int id, int damage, int count) {
         //TODO 回退之前的方块更新方案，现在有更好的解决方式，下个版本移除这段代码

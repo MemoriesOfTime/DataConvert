@@ -1,25 +1,35 @@
 package cn.lanink.dataconvert.convert;
 
-import cn.lanink.dataconvert.utils.NBTIO;
+import cn.lanink.dataconvert.utils.NBTIO1;
+import cn.nukkit.Server;
+import cn.nukkit.nbt.NBTIO;
 import cn.nukkit.nbt.tag.CompoundTag;
 import cn.nukkit.nbt.tag.ListTag;
+import cn.nukkit.nbt.tag.Tag;
 import com.google.common.base.Preconditions;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
 import java.io.*;
+import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 import java.util.*;
+import java.util.zip.GZIPInputStream;
 
 public class RuntimeBlockStateConvert {
     public static void convert() throws IOException {
+        //使用旧的NK数据作为基础
+        ListTag<CompoundTag> oldTag;
+        try (InputStream stream = new FileInputStream("src/main/resources/Nukkit_Data/runtime_block_states_618.dat")) { //TODO 有新的数据时记得更新
+            //noinspection unchecked
+            oldTag = (ListTag<CompoundTag>) NBTIO.readTag(new BufferedInputStream(new GZIPInputStream(stream)), ByteOrder.BIG_ENDIAN, false);
+        } catch (IOException e) {
+            throw new AssertionError("Unable to locate runtime_block_states_618.dat", e);
+        }
+
         Int2ObjectMap<String> blockIdToPersistenceName = new Int2ObjectOpenHashMap<>();
         Map<String, Integer> persistenceNameToBlockId = new LinkedHashMap<>();
         try (InputStream stream = new FileInputStream("src/main/resources/block_ids.csv")) {
-            if (stream == null) {
-                throw new AssertionError("Unable to locate block_ids.csv");
-            }
-
             int count = 0;
             try(BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
                 String line;
@@ -40,24 +50,19 @@ public class RuntimeBlockStateConvert {
             } catch (Exception e) {
                 throw new IOException("Error reading the line "+count+" of the block_ids.csv", e);
             }
-
         } catch (IOException e) {
             throw new AssertionError(e);
         }
 
-
+        //加载PMMP的数据
         List<CompoundTag> tags = new ArrayList<>();
         try (InputStream stream = new FileInputStream("src/main/resources/PMMP_Data/canonical_block_states.nbt")) {
-            if (stream == null) {
-                throw new AssertionError("Unable to locate block state nbt");
-            }
-
             try (BufferedInputStream bis = new BufferedInputStream(stream)) {
                 int runtimeId = 0;
                 while (bis.available() > 0) {
-                    CompoundTag tag = NBTIO.read(bis, ByteOrder.BIG_ENDIAN, true);
+                    CompoundTag tag = NBTIO1.read(bis, ByteOrder.BIG_ENDIAN, true);
                     tag.putInt("runtimeId", runtimeId++);
-                    tag.putInt("blockId", persistenceNameToBlockId.getOrDefault(tag.getString("name").toLowerCase(), -1));
+                    tag.putInt("id", persistenceNameToBlockId.getOrDefault(tag.getString("name").toLowerCase(), -1));
                     tags.add(tag);
                 }
             }
@@ -70,28 +75,62 @@ public class RuntimeBlockStateConvert {
         int data = 0;
         String lastBlockName = null;
         for (CompoundTag block : tags) {
-            int blockId = block.getInt("blockId");
-            block.remove("blockId");
-            block.putInt("id", blockId);
-
-            //TODO fix data
-            String name = block.getString("name");
-            if (name.equalsIgnoreCase(lastBlockName)) {
-                data++;
-            } else {
-                data = 0;
+            //根据名称获取旧的方块数据
+            List<CompoundTag> oldTagList = getBlockByName(oldTag, block.getString("name"));
+            if (oldTagList.isEmpty()) {
+                continue; //跳过未实现的方块
             }
-            lastBlockName = name;
-            block.putShort("data", (short) data);
 
-            CompoundTag statesCompound = block.getCompound("states");
-            if (statesCompound.isEmpty()) {
-                block.remove("states");
+            ArrayList<Tag> newBlockTags = new ArrayList<>();
+            for (Tag tag : block.getCompound("states").getAllTags()) {
+                newBlockTags.add(tag);
             }
-            statesList.add(block);
+
+            CompoundTag equalsTag = null;
+            for (CompoundTag tag : oldTagList) {
+                if (equalsTag != null) {
+                    continue;
+                }
+                CompoundTag oldBlockTags = tag.getCompound("states");
+                if (newBlockTags.isEmpty() && oldBlockTags.isEmpty()) {
+                    equalsTag = tag;
+                    continue;
+                }
+                for (Tag tag1 : newBlockTags) {
+                    if (oldBlockTags.contains(tag1.getName()) && oldBlockTags.get(tag1.getName()).equals(tag1)) {
+                        equalsTag = tag;
+                        break;
+                    } else {
+                        Object object = tag1.parseValue();
+                        if (tag1 instanceof CompoundTag compoundTag && compoundTag.getTags().isEmpty()
+                                || tag1 instanceof ListTag<?> listTag && listTag.getAll().isEmpty()
+                                || object instanceof Number number && number.intValue() == 0
+                                || object instanceof String string && string.isBlank()
+                                || object instanceof Array array && Array.getLength(array) == 0) {
+                            equalsTag = tag;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (equalsTag != null) {
+                equalsTag.putInt("runtimeId", block.getInt("runtimeId"));
+                statesList.add(equalsTag);
+            }
         }
 
-        OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("src/main/resources/Nukkit_Data/runtime_block_states.dat"));
-        NBTIO.writeGZIPCompressed(statesList, outputStream, ByteOrder.BIG_ENDIAN);
+        OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("src/main/resources/Nukkit_Data/new_runtime_block_states.dat"));
+        NBTIO1.writeGZIPCompressed(statesList, outputStream, ByteOrder.BIG_ENDIAN);
+    }
+
+    private static List<CompoundTag> getBlockByName(ListTag<CompoundTag> tags, String name) {
+        ArrayList<CompoundTag> list = new ArrayList<>();
+        for (CompoundTag block : tags.getAll()) {
+            if (block.getString("name").equals(name)) {
+                list.add(block);
+            }
+        }
+        return list;
     }
 }
