@@ -21,8 +21,8 @@ import java.util.zip.GZIPInputStream;
 @Log4j2
 public class RuntimeBlockStateConvert {
     public static void convert() throws IOException {
-        int oldBlockStatesVersion = 618;
-        int targetBlockStatesVersion = 622;
+        int oldBlockStatesVersion = 622;
+        int targetBlockStatesVersion = 630;
 
         //使用PM1E的数据作为更新判断的基础（因为相比nkx比较全）
         ListTag<CompoundTag> oldBaseListTag;
@@ -39,7 +39,9 @@ public class RuntimeBlockStateConvert {
             //noinspection unchecked
             nkxTag = (ListTag<CompoundTag>) NBTIO.readTag(new BufferedInputStream(new GZIPInputStream(stream)), ByteOrder.BIG_ENDIAN, false);
         } catch (IOException e) {
-            throw new AssertionError("Unable to locate nkx_runtime_block_states_" + targetBlockStatesVersion + ".dat", e);
+            //throw new AssertionError("Unable to locate nkx_runtime_block_states_" + targetBlockStatesVersion + ".dat", e);
+            log.warn("Unable to locate nkx_runtime_block_states_" + targetBlockStatesVersion + ".dat", e);
+            nkxTag = new ListTag<>();
         }
 
         Int2ObjectMap<String> blockIdToPersistenceName = new Int2ObjectOpenHashMap<>();
@@ -89,7 +91,7 @@ public class RuntimeBlockStateConvert {
         //更新方块数据到新版本
         ListTag<CompoundTag> listTag = new ListTag<>();
         for (CompoundTag compoundTag : oldBaseListTag.getAll()) {
-            listTag.add(nbtMap2CompoundTag(BlockStateUpdaters.updateBlockState(compoundTag2NbtMap(compoundTag), oldBlockStatesVersion)));
+            listTag.add(nbtMap2CompoundTag(BlockStateUpdaters.updateBlockState(compoundTag2NbtMap(compoundTag),  compoundTag.getInt("version"))));
         }
         oldBaseListTag = listTag;
 
@@ -103,7 +105,10 @@ public class RuntimeBlockStateConvert {
             String name = block.getString("name");
             List<CompoundTag> oldTagList = getBlockByName(oldBaseListTag, name, null);
             if (oldTagList.isEmpty()) {
-                continue; //跳过未实现的方块
+                /*CompoundTag copy = block.copy();
+                copy.putShort("data", -1);
+                newTagList.add(copy);*/
+                continue;
             }
 
             ArrayList<Tag> newBlockStates = new ArrayList<>(block.getCompound("states").getAllTags());
