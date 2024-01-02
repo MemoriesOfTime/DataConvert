@@ -98,11 +98,25 @@ public class RuntimeBlockStateConvert {
         ListTag<CompoundTag> newTagList = new ListTag<>();
         newTagList.setAll(nkxTag.getAll());
 
+        //移除不需要的
+        List<CompoundTag> all = newTagList.getAll();
+        newTagList = new ListTag<>();
+        for (CompoundTag tag : all) {
+            if (tag.getString("name").equals("minecraft:respawn_anchor")) {
+                continue;
+            }
+            newTagList.add(tag);
+        }
+
         int data = 0;
         String lastBlockName = null;
         for (CompoundTag block : tags) {
             //根据名称获取旧的方块数据
             String name = block.getString("name");
+            ArrayList<Tag> newBlockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+
+            //minecraft:beehive  minecraft:bee_nest
+
             List<CompoundTag> oldTagList = getBlockByName(oldBaseListTag, name, null);
             if (oldTagList.isEmpty()) {
                 /*CompoundTag copy = block.copy();
@@ -111,7 +125,23 @@ public class RuntimeBlockStateConvert {
                 continue;
             }
 
-            ArrayList<Tag> newBlockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+            //额外添加
+            if (name.equals("minecraft:respawn_anchor")) {
+                IntTag intTag = (IntTag) newBlockStates.get(0);
+                CompoundTag copy = block.copy();
+                copy.putShort("data", intTag.getData());
+                newTagList.add(copy);
+                continue;
+            } else if (name.equals("minecraft:bee_nest") || name.equals("minecraft:beehive")) {
+                //direction int 0
+                //honey_level int 1
+                CompoundTag copy = block.copy();
+                IntTag directionTag = (IntTag) newBlockStates.get(0);
+                IntTag honeyLevelTag = (IntTag) newBlockStates.get(1);
+                copy.putShort("data", (short) (honeyLevelTag.getData() << 2 | directionTag.getData()));
+                newTagList.add(copy);
+                continue;
+            }
 
             CompoundTag equalsTag = null;
             for (CompoundTag tag : oldTagList) {
