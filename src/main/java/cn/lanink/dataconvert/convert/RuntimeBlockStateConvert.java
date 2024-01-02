@@ -102,7 +102,10 @@ public class RuntimeBlockStateConvert {
         List<CompoundTag> all = newTagList.getAll();
         newTagList = new ListTag<>();
         for (CompoundTag tag : all) {
-            if (tag.getString("name").equals("minecraft:respawn_anchor")) {
+            String name = tag.getString("name");
+            if (name.equals("minecraft:respawn_anchor")
+                    || name.equals("minecraft:bee_nest")
+                    || name.equals("minecraft:beehive")) {
                 continue;
             }
             newTagList.add(tag);
