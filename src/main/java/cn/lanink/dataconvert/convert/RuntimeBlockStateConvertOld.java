@@ -4,10 +4,10 @@ import cn.lanink.dataconvert.utils.NBTIO1;
 import cn.nukkit.nbt.NBTIO;
 import cn.nukkit.nbt.tag.*;
 import com.google.common.base.Preconditions;
+import com.google.common.io.ByteStreams;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.extern.log4j.Log4j2;
-import org.cloudburstmc.blockstateupdater.BlockStateUpdaters;
 import org.cloudburstmc.nbt.NbtList;
 import org.cloudburstmc.nbt.NbtMap;
 import org.cloudburstmc.nbt.NbtMapBuilder;
@@ -15,33 +15,32 @@ import org.cloudburstmc.nbt.NbtType;
 
 import java.io.*;
 import java.nio.ByteOrder;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 @Log4j2
-public class RuntimeBlockStateConvert {
-    public static void convert() throws IOException {
-        int oldBlockStatesVersion = 622;
-        int targetBlockStatesVersion = 630;
+public class RuntimeBlockStateConvertOld {
 
-        //使用PM1E的数据作为更新判断的基础（因为相比nkx比较全）
+    public static void main(String[] args) throws IOException {
+        convert(575);
+        convert(582);
+        convert(589);
+        convert(594);
+        convert(618);
+        System.exit(0);
+    }
+
+    public static void convert(int oldBlockStatesVersion) throws IOException {
+
         ListTag<CompoundTag> oldBaseListTag;
-        try (InputStream stream = new FileInputStream("src/main/resources/Nukkit_Data/pm1e_runtime_block_states_" + oldBlockStatesVersion + ".dat")) {
+        try (InputStream stream = new FileInputStream("src/main/resources/Target_Data/runtime_block_states_" + oldBlockStatesVersion + ".dat")) {
             //noinspection unchecked
             oldBaseListTag = (ListTag<CompoundTag>) NBTIO.readTag(new BufferedInputStream(new GZIPInputStream(stream)), ByteOrder.BIG_ENDIAN, false);
         } catch (IOException e) {
-            throw new AssertionError("Unable to locate pm1e_runtime_block_states_" + oldBlockStatesVersion + ".dat", e);
-        }
-
-        //加载NKX的数据，对于NKX存在的数据我们不需要重复生成
-        ListTag<CompoundTag> nkxTag;
-        try (InputStream stream = new FileInputStream("src/main/resources/Nukkit_Data/nkx_runtime_block_states_" + targetBlockStatesVersion + ".dat")) {
-            //noinspection unchecked
-            nkxTag = (ListTag<CompoundTag>) NBTIO.readTag(new BufferedInputStream(new GZIPInputStream(stream)), ByteOrder.BIG_ENDIAN, false);
-        } catch (IOException e) {
-            //throw new AssertionError("Unable to locate nkx_runtime_block_states_" + targetBlockStatesVersion + ".dat", e);
-            log.warn("Unable to locate nkx_runtime_block_states_" + targetBlockStatesVersion + ".dat", e);
-            nkxTag = new ListTag<>();
+            throw new AssertionError("Unable to locate runtime_block_states_" + oldBlockStatesVersion + ".dat", e);
         }
 
         Int2ObjectMap<String> blockIdToPersistenceName = new Int2ObjectOpenHashMap<>();
@@ -73,123 +72,96 @@ public class RuntimeBlockStateConvert {
 
         //加载PMMP的数据
         List<CompoundTag> tags = new ArrayList<>();
-        try (InputStream stream = new FileInputStream("src/main/resources/PMMP_Data/canonical_block_states.nbt")) {
-            try (BufferedInputStream bis = new BufferedInputStream(stream)) {
-                int runtimeId = 0;
-                while (bis.available() > 0) {
-                    CompoundTag tag = NBTIO1.read(bis, ByteOrder.BIG_ENDIAN, true);
-                    tag.putInt("runtimeId", runtimeId++);
-                    String name = tag.getString("name").toLowerCase();
-                    tag.putInt("id", persistenceNameToBlockId.getOrDefault(name, -1));
-                    tags.add(tag);
+        ListTag<CompoundTag> tags2 = null;
+        if (oldBlockStatesVersion >= 419) {
+            try (InputStream stream = new FileInputStream("src/main/resources/PMMP_Data/canonical_block_states_" + oldBlockStatesVersion + ".nbt")) {
+                try (BufferedInputStream bis = new BufferedInputStream(stream)) {
+                    int runtimeId = 0;
+                    while (bis.available() > 0) {
+                        CompoundTag tag = NBTIO1.read(bis, ByteOrder.BIG_ENDIAN, true);
+                        tag.putInt("runtimeId", runtimeId++);
+                        String name = tag.getString("name").toLowerCase();
+                        tag.putInt("id", persistenceNameToBlockId.getOrDefault(name, -1));
+                        tags.add(tag);
+                    }
                 }
+            } catch (IOException e) {
+                throw new AssertionError(e);
             }
-        } catch (IOException e) {
-            throw new AssertionError(e);
+        } else {
+            try (InputStream stream = new FileInputStream("src/main/resources/PMMP_Data/required_block_states_" + oldBlockStatesVersion + ".nbt")) {
+                //noinspection unchecked
+                tags2 = (ListTag<CompoundTag>) NBTIO.readTag(new ByteArrayInputStream(ByteStreams.toByteArray(stream)), ByteOrder.BIG_ENDIAN, true);
+            } catch (IOException e) {
+                throw new AssertionError("Unable to locate runtime_block_states_" + oldBlockStatesVersion + ".dat", e);
+            }
         }
-
-        //更新方块数据到新版本
-        ListTag<CompoundTag> listTag = new ListTag<>();
-        for (CompoundTag compoundTag : oldBaseListTag.getAll()) {
-            listTag.add(nbtMap2CompoundTag(BlockStateUpdaters.updateBlockState(compoundTag2NbtMap(compoundTag),  compoundTag.getInt("version"))));
-        }
-        oldBaseListTag = listTag;
 
         ListTag<CompoundTag> newTagList = new ListTag<>();
-        newTagList.setAll(nkxTag.getAll());
+        ListTag<CompoundTag> newBeeNest = new ListTag<>(); //蜂巢 蜂箱
+        ListTag<CompoundTag> newBeehive = new ListTag<>();
+        ListTag<CompoundTag> newDecoratedPot = new ListTag<>(); //陶罐
 
-        //移除不需要的
-        List<CompoundTag> all = newTagList.getAll();
-        newTagList = new ListTag<>();
-        for (CompoundTag tag : all) {
-            String name = tag.getString("name");
-            if (name.equals("minecraft:respawn_anchor")
-                    || name.equals("minecraft:bee_nest")
-                    || name.equals("minecraft:beehive")) {
-                continue;
+        if (tags2 != null) {
+            for (CompoundTag tag : tags2.getAll()) {
+                tags.add(tag.getCompound("block"));
             }
-            newTagList.add(tag);
         }
 
-        //更新方块runtimeId
         for (CompoundTag block : tags) {
-            //根据名称获取旧的方块数据
             String name = block.getString("name");
-            ArrayList<Tag> newBlockStates = new ArrayList<>(block.getCompound("states").getAllTags());
-
-            List<CompoundTag> oldTagList = getBlockByName(oldBaseListTag, name, null);
-            if (oldTagList.isEmpty()) {
-                /*CompoundTag copy = block.copy();
-                copy.putShort("data", -1);
-                newTagList.add(copy);*/
-                continue;
-            }
 
             //额外添加
-            if (name.equals("minecraft:respawn_anchor")) {
-                IntTag intTag = (IntTag) newBlockStates.get(0);
-                CompoundTag copy = block.copy();
-                copy.putShort("data", intTag.getData());
-                newTagList.add(copy);
-                continue;
-            } else if (name.equals("minecraft:bee_nest") || name.equals("minecraft:beehive")) {
+            if (name.equals("minecraft:bee_nest") || name.equals("minecraft:beehive")) {
+                ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
                 //direction int 0
                 //honey_level int 1
                 CompoundTag copy = block.copy();
-                IntTag directionTag = (IntTag) newBlockStates.get(0);
-                IntTag honeyLevelTag = (IntTag) newBlockStates.get(1);
-                copy.putShort("data", (short) (honeyLevelTag.getData() << 2 | directionTag.getData()));
-                newTagList.add(copy);
-                continue;
-            }
-
-            CompoundTag equalsTag = null;
-            for (CompoundTag tag : oldTagList) {
-                if (equalsTag != null) {
-                    break;
-                }
-                CompoundTag oldBlockStates = tag.getCompound("states");
-                if (newBlockStates.isEmpty() && oldBlockStates.isEmpty()) {
-                    equalsTag = tag;
-                    break;
+                IntTag directionTag = (IntTag) blockStates.get(0);
+                IntTag honeyLevelTag = (IntTag) blockStates.get(1);
+                copy.putShort("data", (short) (honeyLevelTag.getData() << 2 | convertFacingDirectionToDirection(directionTag.getData())));
+                if (name.equals("minecraft:bee_nest")) {
+                    newBeeNest.add(copy);
                 } else {
-                    boolean equals = true;
-                    for (Tag tag1 : newBlockStates) {
-                        if (!oldBlockStates.contains(tag1.getName())
-                                || !oldBlockStates.get(tag1.getName()).parseValue().equals(tag1.parseValue())) {
-                            equals = false;
-                            break;
-                        }
-                    }
-                    if (equals) {
-                        equalsTag = tag;
-                    }
+                    newBeehive.add(copy);
                 }
-            }
-
-            if (equalsTag != null) {
-                CompoundTag copy = equalsTag.copy();
-                int runtimeId = block.getInt("runtimeId");
-                copy.putInt("runtimeId", runtimeId);
-                copy.putInt("version", block.getInt("version"));
-                boolean isDuplicate = false;
-                for (CompoundTag tag : newTagList.getAll()) {
-                    if (tag.getInt("runtimeId") == runtimeId
-                            || (tag.getString("name").equals(copy.getString("name"))
-                            && tag.getInt("id") == copy.getInt("id")
-                            && tag.getShort("data") == copy.getShort("data")
-                            && tag.getByte("stateOverload") == copy.getByte("stateOverload"))) {
-                        isDuplicate = true;
-                        log.debug("Duplicate : " + block + "\n" + copy + "\n " + tag);
-                    }
-                }
-                if (!isDuplicate) {
-                    newTagList.add(copy);
-                }
+            } else if (name.equals("minecraft:decorated_pot")) {
+                ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                CompoundTag copy = block.copy();
+                IntTag directionTag = (IntTag) blockStates.get(0);
+                int data = directionTag.getData();
+                copy.putShort("data", (short) data);
+                newDecoratedPot.add(copy);
             }
         }
 
-        OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("src/main/resources/Target_Data/runtime_block_states_" + targetBlockStatesVersion + ".dat"));
+        int v = -1;
+        for (CompoundTag tag : oldBaseListTag.getAll()) {
+            String name = tag.getString("name");
+            if (v == -1) {
+                v = tag.getInt("version");
+            }
+            /*if (name.equals("minecraft:bee_nest")) {
+                for (CompoundTag block : newBeeNest.getAll()) {
+                    block.putInt("version", tag.getInt("version"));
+                    newTagList.add(block);
+                }
+            } else if (name.equals("minecraft:beehive")) {
+                for (CompoundTag block : newBeehive.getAll()) {
+                    block.putInt("version", tag.getInt("version"));
+                    newTagList.add(block);
+                }
+            } else {*/
+                newTagList.add(tag);
+            //}
+        }
+        for (CompoundTag block : newDecoratedPot.getAll()) {
+            block.putInt("version", v);
+            newTagList.add(block);
+        }
+
+
+        OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("src/main/resources/Target_Data/n_runtime_block_states_" + oldBlockStatesVersion + ".dat"));
         NBTIO1.writeGZIPCompressed(newTagList, outputStream, ByteOrder.BIG_ENDIAN);
     }
 
@@ -202,6 +174,20 @@ public class RuntimeBlockStateConvert {
             }
         }
         return list;
+    }
+
+    private static int convertFacingDirectionToDirection(int facingDirection) {
+        switch (facingDirection) {
+            case 2:
+                return 2;
+            case 3:
+            default:
+                return 0;
+            case 4:
+                return 1;
+            case 5:
+                return 3;
+        }
     }
 
     private static NbtMap compoundTag2NbtMap(CompoundTag compoundTag) {
