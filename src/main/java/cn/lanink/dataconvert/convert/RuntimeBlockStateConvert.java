@@ -21,12 +21,12 @@ import java.util.zip.GZIPInputStream;
 @Log4j2
 public class RuntimeBlockStateConvert {
     public static void convert() throws IOException {
-        int oldBlockStatesVersion = 622;
-        int targetBlockStatesVersion = 630;
+        int oldBlockStatesVersion = 630;
+        int targetBlockStatesVersion = 649;
 
-        //使用PM1E的数据作为更新判断的基础（因为相比nkx比较全）
+        //更新判断的基础数据
         ListTag<CompoundTag> oldBaseListTag;
-        try (InputStream stream = new FileInputStream("src/main/resources/Nukkit_Data/pm1e_runtime_block_states_" + oldBlockStatesVersion + ".dat")) {
+        try (InputStream stream = new FileInputStream("src/main/resources/Target_Data/runtime_block_states_" + oldBlockStatesVersion + ".dat")) {
             //noinspection unchecked
             oldBaseListTag = (ListTag<CompoundTag>) NBTIO.readTag(new BufferedInputStream(new GZIPInputStream(stream)), ByteOrder.BIG_ENDIAN, false);
         } catch (IOException e) {
@@ -73,7 +73,7 @@ public class RuntimeBlockStateConvert {
 
         //加载PMMP的数据
         List<CompoundTag> tags = new ArrayList<>();
-        try (InputStream stream = new FileInputStream("src/main/resources/PMMP_Data/canonical_block_states.nbt")) {
+        try (InputStream stream = new FileInputStream("src/main/resources/PMMP_Data/canonical_block_states_" + targetBlockStatesVersion + ".nbt")) {
             try (BufferedInputStream bis = new BufferedInputStream(stream)) {
                 int runtimeId = 0;
                 while (bis.available() > 0) {
@@ -141,7 +141,14 @@ public class RuntimeBlockStateConvert {
                 copy.putShort("data", (short) (honeyLevelTag.getData() << 2 | directionTag.getData()));
                 newTagList.add(copy);
                 continue;
-            }
+            }/* else if (name.equals("minecraft:decorated_pot")) {
+                ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                CompoundTag copy = block.copy();
+                IntTag directionTag = (IntTag) blockStates.get(0);
+                int data = directionTag.getData();
+                copy.putShort("data", (short) data);
+                newTagList.add(copy);
+            }*/
 
             CompoundTag equalsTag = null;
             for (CompoundTag tag : oldTagList) {

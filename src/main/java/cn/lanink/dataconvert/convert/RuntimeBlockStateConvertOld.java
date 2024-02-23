@@ -25,11 +25,12 @@ import java.util.zip.GZIPInputStream;
 public class RuntimeBlockStateConvertOld {
 
     public static void main(String[] args) throws IOException {
-        convert(575);
-        convert(582);
         convert(589);
         convert(594);
         convert(618);
+        convert(622);
+        convert(630);
+        convert(649);
         System.exit(0);
     }
 
@@ -98,9 +99,18 @@ public class RuntimeBlockStateConvertOld {
         }
 
         ListTag<CompoundTag> newTagList = new ListTag<>();
+
         ListTag<CompoundTag> newBeeNest = new ListTag<>(); //蜂巢 蜂箱
         ListTag<CompoundTag> newBeehive = new ListTag<>();
+
         ListTag<CompoundTag> newDecoratedPot = new ListTag<>(); //陶罐
+
+        ListTag<CompoundTag> newCrimsonPressurePlate = new ListTag<>(); //深红压力板
+        ListTag<CompoundTag> newWarpedPressurePlate = new ListTag<>(); //扭曲木压力板
+
+        ListTag<CompoundTag> newMangrovePlanks = new ListTag<>(); //红木板
+        ListTag<CompoundTag> newBambooPlanks = new ListTag<>(); //竹板
+        ListTag<CompoundTag> newCherryPlanks  = new ListTag<>(); //樱花木板
 
         if (tags2 != null) {
             for (CompoundTag tag : tags2.getAll()) {
@@ -110,7 +120,37 @@ public class RuntimeBlockStateConvertOld {
 
         for (CompoundTag block : tags) {
             String name = block.getString("name");
-
+            switch (name.toLowerCase()) {
+                case "minecraft:crimson_pressure_plate":
+                    ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    CompoundTag copy = block.copy();
+                    IntTag directionTag = (IntTag) blockStates.get(0);
+                    copy.putShort("data", directionTag.getData());
+                    newCrimsonPressurePlate.add(copy);
+                    break;
+                case "minecraft:warped_pressure_plate":
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    copy = block.copy();
+                    directionTag = (IntTag) blockStates.get(0);
+                    copy.putShort("data", directionTag.getData());
+                    newWarpedPressurePlate.add(copy);
+                    break;
+                case "minecraft:mangrove_planks":
+                    copy = block.copy();
+                    copy.putShort("data", 0);
+                    newMangrovePlanks.add(copy);
+                    break;
+                case "minecraft:bamboo_planks":
+                    copy = block.copy();
+                    copy.putShort("data", 0);
+                    newBambooPlanks.add(copy);
+                    break;
+                case "minecraft:cherry_planks":
+                    copy = block.copy();
+                    copy.putShort("data", 0);
+                    newCherryPlanks.add(copy);
+                    break;
+            }
             //额外添加
             if (name.equals("minecraft:bee_nest") || name.equals("minecraft:beehive")) {
                 ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
@@ -141,6 +181,17 @@ public class RuntimeBlockStateConvertOld {
             if (v == -1) {
                 v = tag.getInt("version");
             }
+            /*if (name.equals("minecraft:crimson_pressure_plate")) {
+                for (CompoundTag block : newCrimsonPressurePlate.getAll()) {
+                    block.putInt("version", tag.getInt("version"));
+                    newTagList.add(block);
+                }
+            } else if (name.equals("minecraft:warped_pressure_plate")) {
+                for (CompoundTag block : newWarpedPressurePlate.getAll()) {
+                    block.putInt("version", tag.getInt("version"));
+                    newTagList.add(block);
+                }
+            }*/
             /*if (name.equals("minecraft:bee_nest")) {
                 for (CompoundTag block : newBeeNest.getAll()) {
                     block.putInt("version", tag.getInt("version"));
@@ -151,15 +202,27 @@ public class RuntimeBlockStateConvertOld {
                     block.putInt("version", tag.getInt("version"));
                     newTagList.add(block);
                 }
-            } else {*/
+            }*/ //else {
                 newTagList.add(tag);
             //}
         }
-        for (CompoundTag block : newDecoratedPot.getAll()) {
+        /*for (CompoundTag block : newDecoratedPot.getAll()) {
+            block.putInt("version", v);
+            newTagList.add(block);
+        }*/
+
+        for (CompoundTag block : newMangrovePlanks.getAll()) {
             block.putInt("version", v);
             newTagList.add(block);
         }
-
+        for (CompoundTag block : newBambooPlanks.getAll()) {
+            block.putInt("version", v);
+            newTagList.add(block);
+        }
+        for (CompoundTag block : newCherryPlanks.getAll()) {
+            block.putInt("version", v);
+            newTagList.add(block);
+        }
 
         OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("src/main/resources/Target_Data/n_runtime_block_states_" + oldBlockStatesVersion + ".dat"));
         NBTIO1.writeGZIPCompressed(newTagList, outputStream, ByteOrder.BIG_ENDIAN);
