@@ -82,7 +82,11 @@ public class RuntimeBlockStateConvertOld {
                         CompoundTag tag = NBTIO1.read(bis, ByteOrder.BIG_ENDIAN, true);
                         tag.putInt("runtimeId", runtimeId++);
                         String name = tag.getString("name").toLowerCase();
-                        tag.putInt("id", persistenceNameToBlockId.getOrDefault(name, -1));
+                        Integer id = persistenceNameToBlockId.getOrDefault(name, -1);
+                        tag.putInt("id", id);
+                        if (id == -1) {
+                            log.error("Unable to find block id for " + name);
+                        }
                         tags.add(tag);
                     }
                 }
