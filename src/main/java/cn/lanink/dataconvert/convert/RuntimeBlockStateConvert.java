@@ -21,8 +21,8 @@ import java.util.zip.GZIPInputStream;
 @Log4j2
 public class RuntimeBlockStateConvert {
     public static void convert() throws IOException {
-        int oldBlockStatesVersion = 630;
-        int targetBlockStatesVersion = 649;
+        int oldBlockStatesVersion = 649;
+        int targetBlockStatesVersion = 662;
 
         //更新判断的基础数据
         ListTag<CompoundTag> oldBaseListTag;
