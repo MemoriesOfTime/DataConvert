@@ -15,6 +15,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
         <log4j2.version>2.17.1</log4j2.version>
+        <block-state-updater.version>1.20.70-SNAPSHOT</block-state-updater.version>
     </properties>
 
     <repositories>
@@ -40,7 +41,7 @@
         </repository>
         <repository>
             <id>repo-lanink-cn</id>
-            <url>https://repo.lanink.cn/</url>
+            <url>https://repo.lanink.cn/repository/maven-public/</url>
         </repository>
     </repositories>
 
@@ -56,14 +57,14 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.26</version>
+            <version>1.18.30</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.cloudburstmc</groupId>
             <artifactId>block-state-updater</artifactId>
-            <version>1.20.60-SNAPSHOT</version>
+            <version>${block-state-updater.version}</version>
             <scope>compile</scope>
         </dependency>
 

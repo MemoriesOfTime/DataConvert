@@ -31,6 +31,7 @@ public class RuntimeBlockStateConvertOld {
         convert(622);
         convert(630);
         convert(649);
+        convert(662);
         System.exit(0);
     }
 
@@ -85,7 +86,7 @@ public class RuntimeBlockStateConvertOld {
                         Integer id = persistenceNameToBlockId.getOrDefault(name, -1);
                         tag.putInt("id", id);
                         if (id == -1) {
-                            log.error("Unable to find block id for " + name);
+                            log.error(oldBlockStatesVersion + " Unable to find block id for " + name);
                         }
                         tags.add(tag);
                     }
@@ -116,14 +117,49 @@ public class RuntimeBlockStateConvertOld {
         ListTag<CompoundTag> newBambooPlanks = new ListTag<>(); //竹板
         ListTag<CompoundTag> newCherryPlanks  = new ListTag<>(); //樱花木板
 
+        ListTag<CompoundTag> newCrimsonStairs = new ListTag<>(); //绯红木楼梯
+        ListTag<CompoundTag> newWarpedStairs = new ListTag<>(); //诡异木楼梯
+
+        ListTag<CompoundTag> newStrippedCherryLog = new ListTag<>(); //去皮樱花原木
+        ListTag<CompoundTag> newCherryLog = new ListTag<>(); //樱花原木
+        ListTag<CompoundTag> newStrippedCherryWood = new ListTag<>(); //去皮樱花木
+        ListTag<CompoundTag> newCherryWood = new ListTag<>(); //樱花木
+        ListTag<CompoundTag> newCherrySapling = new ListTag<>(); //樱花树苗
+        ListTag<CompoundTag> newCherryLeaves = new ListTag<>(); //樱花树叶
+
         if (tags2 != null) {
             for (CompoundTag tag : tags2.getAll()) {
                 tags.add(tag.getCompound("block"));
             }
         }
+        for (CompoundTag tag : tags) {
+            log.debug(tag.toSNBT());
+        }
 
         for (CompoundTag block : tags) {
             String name = block.getString("name");
+            //额外添加
+            if (name.equals("minecraft:bee_nest") || name.equals("minecraft:beehive")) {
+                ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                //direction int 0
+                //honey_level int 1
+                CompoundTag copy = block.copy();
+                IntTag directionTag = (IntTag) blockStates.get(0);
+                IntTag honeyLevelTag = (IntTag) blockStates.get(1);
+                copy.putShort("data", (short) (honeyLevelTag.getData() << 2 | convertFacingDirectionToDirection(directionTag.getData())));
+                if (name.equals("minecraft:bee_nest")) {
+                    newBeeNest.add(copy);
+                } else {
+                    newBeehive.add(copy);
+                }
+            } else if (name.equals("minecraft:decorated_pot")) {
+                ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                CompoundTag copy = block.copy();
+                IntTag directionTag = (IntTag) blockStates.get(0);
+                int data = directionTag.getData();
+                copy.putShort("data", (short) data);
+                newDecoratedPot.add(copy);
+            }
             switch (name.toLowerCase()) {
                 case "minecraft:crimson_pressure_plate":
                     ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
@@ -154,28 +190,90 @@ public class RuntimeBlockStateConvertOld {
                     copy.putShort("data", 0);
                     newCherryPlanks.add(copy);
                     break;
-            }
-            //额外添加
-            if (name.equals("minecraft:bee_nest") || name.equals("minecraft:beehive")) {
-                ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
-                //direction int 0
-                //honey_level int 1
-                CompoundTag copy = block.copy();
-                IntTag directionTag = (IntTag) blockStates.get(0);
-                IntTag honeyLevelTag = (IntTag) blockStates.get(1);
-                copy.putShort("data", (short) (honeyLevelTag.getData() << 2 | convertFacingDirectionToDirection(directionTag.getData())));
-                if (name.equals("minecraft:bee_nest")) {
-                    newBeeNest.add(copy);
-                } else {
-                    newBeehive.add(copy);
-                }
-            } else if (name.equals("minecraft:decorated_pot")) {
-                ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
-                CompoundTag copy = block.copy();
-                IntTag directionTag = (IntTag) blockStates.get(0);
-                int data = directionTag.getData();
-                copy.putShort("data", (short) data);
-                newDecoratedPot.add(copy);
+                case "minecraft:crimson_stairs":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    int upsideDownBit = ((ByteTag) blockStates.get(0)).getData();
+                    int weirdoDirection = ((IntTag) blockStates.get(1)).getData();
+                    int data = weirdoDirection & 0x3 | upsideDownBit << 2;
+                    copy.putShort("data", data);
+                    newCrimsonStairs.add(copy);
+                    break;
+                case "minecraft:warped_stairs":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    upsideDownBit = ((ByteTag) blockStates.get(0)).getData();
+                    weirdoDirection = ((IntTag) blockStates.get(1)).getData();
+                    data = weirdoDirection & 0x3 | upsideDownBit << 2;
+                    copy.putShort("data", data);
+                    newWarpedStairs.add(copy);
+                    break;
+                case "minecraft:stripped_cherry_log":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    String pillar_axis = ((StringTag) blockStates.get(0)).parseValue();
+                    data = switch (pillar_axis) {
+                        case "x" -> 4;
+                        case "z" -> 8;
+                        default -> 0; //y
+                    };
+                    copy.putShort("data", data);
+                    newStrippedCherryLog.add(copy);
+                    break;
+                case "minecraft:cherry_log":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    pillar_axis = ((StringTag) blockStates.get(0)).parseValue();
+                    data = switch (pillar_axis) {
+                        case "x" -> 4;
+                        case "z" -> 8;
+                        default -> 0; //y
+                    };
+                    copy.putShort("data", data);
+                    newCherryLog.add(copy);
+                    break;
+                case "minecraft:stripped_cherry_wood":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    pillar_axis = ((StringTag) blockStates.get(0)).parseValue();
+                    data = switch (pillar_axis) {
+                        case "x" -> 0x10;
+                        case "z" -> 0x20;
+                        default -> 0; //y
+                    };
+                    copy.putShort("data", data);
+                    newStrippedCherryWood.add(copy);
+                    break;
+                case "minecraft:cherry_wood":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    int stripped_bit = ((ByteTag) blockStates.get(0)).getData();
+                    pillar_axis = ((StringTag) blockStates.get(1)).parseValue();
+                    data = stripped_bit << 3 | switch (pillar_axis) {
+                        case "x" -> 0x10;
+                        case "z" -> 0x20;
+                        default -> 0; //y
+                    };
+                    copy.putShort("data", data);
+                    newCherryWood.add(copy);
+                    break;
+                case "minecraft:cherry_sapling":
+                    copy = block.copy();
+                    copy.putShort("data", 0);
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    int age_bit = ((ByteTag) blockStates.get(0)).getData();
+                    copy.putShort("data", age_bit << 3);
+                    newCherrySapling.add(copy);
+                    break;
+                case "minecraft:cherry_leaves":
+                    copy = block.copy();
+                    copy.putShort("data", 0);
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    int persistent = ((ByteTag) blockStates.get(0)).getData();
+                    int update = ((ByteTag) blockStates.get(0)).getData();
+                    copy.putShort("data", persistent << 1 | update);
+                    newCherryLeaves.add(copy);
+                    break;
             }
         }
 
@@ -185,6 +283,14 @@ public class RuntimeBlockStateConvertOld {
             if (v == -1) {
                 v = tag.getInt("version");
             }
+            if (oldBlockStatesVersion < 419) {
+                CompoundTag tag1 = tag.getCompound("block");
+                name = tag1.getString("name");
+                if (v == -1) {
+                    v = tag1.getInt("version");
+                }
+            }
+
             /*if (name.equals("minecraft:crimson_pressure_plate")) {
                 for (CompoundTag block : newCrimsonPressurePlate.getAll()) {
                     block.putInt("version", tag.getInt("version"));
@@ -206,16 +312,46 @@ public class RuntimeBlockStateConvertOld {
                     block.putInt("version", tag.getInt("version"));
                     newTagList.add(block);
                 }
-            }*/ //else {
-                newTagList.add(tag);
-            //}
+            } */
+            /*if (name.equals("minecraft:crimson_stairs")) {
+                for (CompoundTag block : newCrimsonStairs.getAll()) {
+                    CompoundTag copy;
+                    if (oldBlockStatesVersion < 419) {
+                        copy = tag.copy();
+                        int data = block.getShort("data");
+                        block.remove("data");
+                        copy.putShort("data", data);
+                        copy.put("block", block);
+                    } else {
+                        copy = block;
+                        block.putInt("version", tag.getInt("version"));
+                    }
+                    newTagList.add(copy);
+                }
+            } else if (name.equals("minecraft:warped_stairs")) {
+                for (CompoundTag block : newWarpedStairs.getAll()) {
+                    CompoundTag copy;
+                    if (oldBlockStatesVersion < 419) {
+                        copy = tag.copy();
+                        int data = block.getShort("data");
+                        block.remove("data");
+                        copy.putShort("data", data);
+                        copy.put("block", block);
+                    } else {
+                        copy = block;
+                        block.putInt("version", tag.getInt("version"));
+                    }
+                    newTagList.add(copy);
+                }
+            } else {*/
+            newTagList.add(tag);
         }
         /*for (CompoundTag block : newDecoratedPot.getAll()) {
             block.putInt("version", v);
             newTagList.add(block);
         }*/
 
-        for (CompoundTag block : newMangrovePlanks.getAll()) {
+        /*for (CompoundTag block : newMangrovePlanks.getAll()) {
             block.putInt("version", v);
             newTagList.add(block);
         }
@@ -224,6 +360,30 @@ public class RuntimeBlockStateConvertOld {
             newTagList.add(block);
         }
         for (CompoundTag block : newCherryPlanks.getAll()) {
+            block.putInt("version", v);
+            newTagList.add(block);
+        }*/
+        for (CompoundTag block : newStrippedCherryLog.getAll()) {
+            block.putInt("version", v);
+            newTagList.add(block);
+        }
+        for (CompoundTag block : newCherryLog.getAll()) {
+            block.putInt("version", v);
+            newTagList.add(block);
+        }
+        for (CompoundTag block : newStrippedCherryWood.getAll()) {
+            block.putInt("version", v);
+            newTagList.add(block);
+        }
+        for (CompoundTag block : newCherryWood.getAll()) {
+            block.putInt("version", v);
+            newTagList.add(block);
+        }
+        for (CompoundTag block : newCherrySapling.getAll()) {
+            block.putInt("version", v);
+            newTagList.add(block);
+        }
+        for (CompoundTag block : newCherryLeaves.getAll()) {
             block.putInt("version", v);
             newTagList.add(block);
         }
