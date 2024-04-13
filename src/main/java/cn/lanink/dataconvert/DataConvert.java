@@ -21,7 +21,7 @@ public class DataConvert {
         }
         log.info("convert blockstate success");
 
-        //TODO creative_items
+        //TODO other
         System.exit(0);
     }
 
