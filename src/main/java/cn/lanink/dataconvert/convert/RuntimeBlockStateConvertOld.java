@@ -101,6 +101,12 @@ public class RuntimeBlockStateConvertOld {
             }
         }
 
+        if (tags2 != null) {
+            for (CompoundTag tag : tags2.getAll()) {
+                tags.add(tag.getCompound("block"));
+            }
+        }
+
         ListTag<CompoundTag> newTagList = new ListTag<>();
 
         ListTag<CompoundTag> newBeeNest = new ListTag<>(); //蜂巢 蜂箱
@@ -125,14 +131,7 @@ public class RuntimeBlockStateConvertOld {
         ListTag<CompoundTag> newCherrySapling = new ListTag<>(); //樱花树苗
         ListTag<CompoundTag> newCherryLeaves = new ListTag<>(); //樱花树叶
 
-        if (tags2 != null) {
-            for (CompoundTag tag : tags2.getAll()) {
-                tags.add(tag.getCompound("block"));
-            }
-        }
-        for (CompoundTag tag : tags) {
-            log.debug(tag.toSNBT());
-        }
+        ListTag<CompoundTag> newChain = new ListTag<>(); //锁链
 
         for (CompoundTag block : tags) {
             String name = block.getString("name");
@@ -272,6 +271,17 @@ public class RuntimeBlockStateConvertOld {
                     copy.putShort("data", persistent << 1 | update);
                     newCherryLeaves.add(copy);
                     break;
+                case "minecraft:chain":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    pillar_axis = ((StringTag) blockStates.get(0)).parseValue();
+                    copy.putShort("data", (short) switch (pillar_axis) {
+                        case "x" -> 1;
+                        case "z" -> 2;
+                        default -> 0; //y
+                    });
+                    newChain.add(copy);
+                    break;
             }
         }
 
@@ -289,7 +299,12 @@ public class RuntimeBlockStateConvertOld {
                 }
             }
 
-            /*if (name.equals("minecraft:crimson_pressure_plate")) {
+            /*if (name.equals("minecraft:chain")) {
+                for (CompoundTag block : newChain.getAll()) {
+                    block.putInt("version", v);
+                    newTagList.add(block);
+                }
+            } else if (name.equals("minecraft:crimson_pressure_plate")) {
                 for (CompoundTag block : newCrimsonPressurePlate.getAll()) {
                     block.putInt("version", tag.getInt("version"));
                     newTagList.add(block);
@@ -342,7 +357,8 @@ public class RuntimeBlockStateConvertOld {
                     newTagList.add(copy);
                 }
             } else {*/
-            newTagList.add(tag);
+                newTagList.add(tag);
+            //}
         }
         /*for (CompoundTag block : newDecoratedPot.getAll()) {
             block.putInt("version", v);
@@ -361,7 +377,7 @@ public class RuntimeBlockStateConvertOld {
             block.putInt("version", v);
             newTagList.add(block);
         }*/
-        for (CompoundTag block : newStrippedCherryLog.getAll()) {
+        /*for (CompoundTag block : newStrippedCherryLog.getAll()) {
             block.putInt("version", v);
             newTagList.add(block);
         }
@@ -384,7 +400,7 @@ public class RuntimeBlockStateConvertOld {
         for (CompoundTag block : newCherryLeaves.getAll()) {
             block.putInt("version", v);
             newTagList.add(block);
-        }
+        }*/
 
         OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("src/main/resources/Target_Data/n_runtime_block_states_" + oldBlockStatesVersion + ".dat"));
         NBTIO1.writeGZIPCompressed(newTagList, outputStream, ByteOrder.BIG_ENDIAN);
