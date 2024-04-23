@@ -129,82 +129,63 @@ public class RuntimeBlockStateConvert {
         }*/
 
         //更新方块runtimeId
-        for (CompoundTag block : tags) {
-            //根据名称获取旧的方块数据
+        for (CompoundTag block : oldBaseListTag.getAll()) {
+            //根据名称获取新的方块数据
             String name = block.getString("name");
-            ArrayList<Tag> newBlockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+            ArrayList<Tag> oldBlockStates = new ArrayList<>(block.getCompound("states").getAllTags());
 
-            List<CompoundTag> oldTagList = getBlockByName(oldBaseListTag, name, null);
-            if (oldTagList.isEmpty()) {
-                /*CompoundTag copy = block.copy();
-                copy.putShort("data", -1);
-                newTagList.add(copy);*/
+            List<CompoundTag> newBlockList = getBlockByName(tags, name, null);
+            if (newBlockList.isEmpty()) {
                 continue;
             }
 
-            //额外添加
-            /*if (name.equals("minecraft:respawn_anchor")) {
-                IntTag intTag = (IntTag) newBlockStates.get(0);
-                CompoundTag copy = block.copy();
-                copy.putShort("data", intTag.getData());
-                newTagList.add(copy);
-                continue;
-            } else if (name.equals("minecraft:bee_nest") || name.equals("minecraft:beehive")) {
-                //direction int 0
-                //honey_level int 1
-                CompoundTag copy = block.copy();
-                IntTag directionTag = (IntTag) newBlockStates.get(0);
-                IntTag honeyLevelTag = (IntTag) newBlockStates.get(1);
-                copy.putShort("data", (short) (honeyLevelTag.getData() << 2 | directionTag.getData()));
-                newTagList.add(copy);
-                continue;
-            } else if (name.equals("minecraft:decorated_pot")) {
-                ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
-                CompoundTag copy = block.copy();
-                IntTag directionTag = (IntTag) blockStates.get(0);
-                int data = directionTag.getData();
-                copy.putShort("data", (short) data);
-                newTagList.add(copy);
-            }*/
-
             CompoundTag equalsTag = null;
-            for (CompoundTag tag : oldTagList) {
+            for (CompoundTag newBlock : newBlockList) {
                 if (equalsTag != null) {
                     break;
                 }
-                CompoundTag oldBlockStates = tag.getCompound("states");
+                CompoundTag newBlockStates = newBlock.getCompound("states");
                 if (newBlockStates.isEmpty() && oldBlockStates.isEmpty()) {
-                    equalsTag = tag;
+                    equalsTag = newBlock;
                     break;
                 } else {
                     boolean equals = true;
-                    for (Tag tag1 : newBlockStates) {
-                        if (!oldBlockStates.contains(tag1.getName())
-                                || !oldBlockStates.get(tag1.getName()).parseValue().equals(tag1.parseValue())) {
+                    for (Tag tag1 : oldBlockStates) {
+                        if (!newBlockStates.contains(tag1.getName())) {
+                            equals = false;
+                            break;
+                        }
+                        Object o1 = newBlockStates.get(tag1.getName()).parseValue();
+                        Object o2 = tag1.parseValue();
+                        if (o1 instanceof Number) {
+                            if (!compare(o1, o2)) {
+                                equals = false;
+                                break;
+                            }
+                        } else if (!o1.equals(o2)) {
                             equals = false;
                             break;
                         }
                     }
                     if (equals) {
-                        equalsTag = tag;
+                        equalsTag = newBlock;
                     }
                 }
             }
 
             if (equalsTag != null) {
-                CompoundTag copy = equalsTag.copy();
-                int runtimeId = block.getInt("runtimeId");
+                CompoundTag copy = block.copy();
+                int runtimeId = equalsTag.getInt("runtimeId");
                 copy.putInt("runtimeId", runtimeId);
-                copy.putInt("version", block.getInt("version"));
+                copy.putInt("version", equalsTag.getInt("version"));
                 boolean isDuplicate = false;
                 for (CompoundTag tag : newTagList.getAll()) {
                     if (tag.getInt("runtimeId") == runtimeId
-                            || (tag.getString("name").equals(copy.getString("name"))
+                            && tag.getString("name").equals(copy.getString("name"))
                             && tag.getInt("id") == copy.getInt("id")
-                            && tag.getShort("data") == copy.getShort("data")
-                            && tag.getByte("stateOverload") == copy.getByte("stateOverload"))) {
+                            && tag.getInt("data") == copy.getInt("data")) {
                         isDuplicate = true;
-                        log.warn("Duplicate : {}\n{}\n {}", block, copy, tag);
+                        log.warn("Duplicate : old:{}\nnew:{}\n originalNew:{}", block, copy, tag);
                     }
                 }
                 if (!isDuplicate) {
@@ -213,18 +194,69 @@ public class RuntimeBlockStateConvert {
             }
         }
 
+        //使用旧的数据中的名称和特殊值检查是否有遗漏
+        for (CompoundTag tag : oldBaseListTag.getAll()) {
+            String name = tag.getString("name");
+            int data = tag.getInt("data");
+            boolean has = false;
+            for (CompoundTag block : newTagList.getAll()) {
+                if (block.getString("name").equals(name) && block.getInt("data") == data) {
+                    has = true;
+                    break;
+                }
+            }
+            if (!has) {
+                log.error("Not found : {}", tag.toSNBT());
+            }
+        }
+
         OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("src/main/resources/Target_Data/runtime_block_states_" + targetBlockStatesVersion + ".dat"));
         NBTIO1.writeGZIPCompressed(newTagList, outputStream, ByteOrder.BIG_ENDIAN);
     }
 
     private static List<CompoundTag> getBlockByName(ListTag<CompoundTag> tags, String name, Integer meta) {
+        return getBlockByName(tags.getAll(), name, meta);
+    }
+
+    private static List<CompoundTag> getBlockByName(List<CompoundTag> tags, String name, Integer meta) {
         ArrayList<CompoundTag> list = new ArrayList<>();
-        for (CompoundTag block : tags.getAll()) {
+        for (CompoundTag block : tags) {
             if (block.getString("name").equals(name)
                     && (meta == null || block.getShort("data") == meta)) {
                 list.add(block);
             }
         }
         return list;
+    }
+
+    public static boolean compare(Object num1, Object num2) {
+        // 如果两个数值都是 null，则认为它们相等
+        if (num1 == null && num2 == null) {
+            return true;
+        }
+
+        // 如果其中一个数值为 null，则认为它们不相等
+        if (num1 == null || num2 == null) {
+            return false;
+        }
+
+        // 将传入的数值转换为 double 类型进行比较
+        double value1 = toDouble(num1);
+        double value2 = toDouble(num2);
+
+        // 判断两个数值是否相等
+        return Double.compare(value1, value2) == 0;
+    }
+
+    private static double toDouble(Object num) {
+        // 如果是 Byte 或者 Integer 类型且数值为 0，则转换为 double 类型的 0
+        if (num instanceof Byte || num instanceof Integer) {
+            if ((int)num == 0) {
+                return 0.0;
+            }
+        }
+
+        // 其他情况将数值转换为 double 类型
+        return ((Number)num).doubleValue();
     }
 }
