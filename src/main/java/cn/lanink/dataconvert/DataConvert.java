@@ -15,7 +15,7 @@ public class DataConvert {
         log.info("Hello, World!");
         log.info("start convert runtime_block_states");
         try {
-            RuntimeBlockStateConvert.convert();
+            RuntimeBlockStateConvert.convert(662, 671);
         } catch (IOException e) {
             log.error("convert runtime_block_states error", e);
         }

@@ -20,9 +20,7 @@ import java.util.zip.GZIPInputStream;
  */
 @Log4j2
 public class RuntimeBlockStateConvert {
-    public static void convert() throws IOException {
-        int oldBlockStatesVersion = 649;
-        int targetBlockStatesVersion = 662;
+    public static void convert(int oldBlockStatesVersion, int targetBlockStatesVersion) throws IOException {
 
         //更新判断的基础数据
         ListTag<CompoundTag> oldBaseListTag;
@@ -89,7 +87,22 @@ public class RuntimeBlockStateConvert {
                 }
             }
         } catch (IOException e) {
-            throw new AssertionError(e);
+            log.error("无法读取" + "PMMP_Data/canonical_block_states_" + targetBlockStatesVersion + ".nbt" + "，尝试读取CB_Data/block_palette_" + targetBlockStatesVersion + ".nbt");
+            //加载cb数据
+            try (InputStream stream = new FileInputStream("src/main/resources/CB_Data/block_palette_" + targetBlockStatesVersion + ".nbt")) {
+                int runtimeId = 0;
+                Tag tag1 = NBTIO.readTag(new BufferedInputStream(new GZIPInputStream(stream)), ByteOrder.BIG_ENDIAN, false);
+                ListTag<CompoundTag> blocks = ((CompoundTag) tag1).getList("blocks", CompoundTag.class);
+                for (CompoundTag compoundTag : blocks.getAll()) {
+                    compoundTag.remove("network_id");
+                    compoundTag.remove("name_hash");
+                    compoundTag.remove("block_id");
+                    compoundTag.putInt("runtimeId", runtimeId++);
+                    tags.add(compoundTag.copy());
+                }
+            } catch (IOException e1) {
+                throw new AssertionError(e1);
+            }
         }
 
         //更新方块数据到新版本

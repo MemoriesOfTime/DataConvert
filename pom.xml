@@ -15,7 +15,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
         <log4j2.version>2.17.1</log4j2.version>
-        <block-state-updater.version>1.20.70-SNAPSHOT</block-state-updater.version>
+        <block-state-updater.version>1.20.80-SNAPSHOT</block-state-updater.version>
     </properties>
 
     <repositories>
@@ -57,7 +57,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.30</version>
+            <version>1.18.32</version>
             <scope>provided</scope>
         </dependency>
 
