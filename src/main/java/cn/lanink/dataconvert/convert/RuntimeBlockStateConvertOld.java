@@ -21,13 +21,22 @@ import java.util.zip.GZIPInputStream;
 public class RuntimeBlockStateConvertOld {
 
     public static void main(String[] args) throws IOException {
-        convert(589);
+        /*convert(419);
+        convert(428);
+        convert(440);
+        convert(448);
+        convert(465);
+        convert(471);
+        convert(486);
+        convert(503);
+        convert(527);
+        convert(544);
+        convert(560);
+        convert(567);
+        convert(575);
+        convert(582);
+        convert(589);*/
         convert(594);
-        convert(618);
-        convert(622);
-        convert(630);
-        convert(649);
-        convert(662);
         System.exit(0);
     }
 
@@ -107,6 +116,10 @@ public class RuntimeBlockStateConvertOld {
             }
         }
 
+        for (CompoundTag compoundTag : tags) {
+            log.info(compoundTag.toSNBT());
+        }
+
         ListTag<CompoundTag> newTagList = new ListTag<>();
 
         ListTag<CompoundTag> newBeeNest = new ListTag<>(); //蜂巢 蜂箱
@@ -114,8 +127,8 @@ public class RuntimeBlockStateConvertOld {
 
         ListTag<CompoundTag> newDecoratedPot = new ListTag<>(); //陶罐
 
-        ListTag<CompoundTag> newCrimsonPressurePlate = new ListTag<>(); //深红压力板
-        ListTag<CompoundTag> newWarpedPressurePlate = new ListTag<>(); //扭曲木压力板
+        ListTag<CompoundTag> newCrimsonPressurePlate = new ListTag<>(); //绯红木压力板
+        ListTag<CompoundTag> newWarpedPressurePlate = new ListTag<>(); //诡异木压力板
 
         ListTag<CompoundTag> newMangrovePlanks = new ListTag<>(); //红木板
         ListTag<CompoundTag> newBambooPlanks = new ListTag<>(); //竹板
@@ -132,6 +145,12 @@ public class RuntimeBlockStateConvertOld {
         ListTag<CompoundTag> newCherryLeaves = new ListTag<>(); //樱花树叶
 
         ListTag<CompoundTag> newChain = new ListTag<>(); //锁链
+
+        ListTag<CompoundTag> newCrimsonFenceGate = new ListTag<>(); //绯红木栅栏门
+        ListTag<CompoundTag> newWarpedFenceGate = new ListTag<>(); //诡异木栅栏门
+
+        ListTag<CompoundTag> newwarped_button = new ListTag<>(); //诡异木按钮
+        ListTag<CompoundTag> newcrimson_button = new ListTag<>(); //绯红木按钮
 
         for (CompoundTag block : tags) {
             String name = block.getString("name");
@@ -273,14 +292,52 @@ public class RuntimeBlockStateConvertOld {
                     break;
                 case "minecraft:chain":
                     copy = block.copy();
-                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
-                    pillar_axis = ((StringTag) blockStates.get(0)).parseValue();
-                    copy.putShort("data", (short) switch (pillar_axis) {
-                        case "x" -> 1;
-                        case "z" -> 2;
-                        default -> 0; //y
-                    });
+                    try {
+                        blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                        pillar_axis = ((StringTag) blockStates.get(0)).parseValue();
+                        copy.putShort("data", (short) switch (pillar_axis) {
+                            case "x" -> 1;
+                            case "z" -> 2;
+                            default -> 0; //y
+                        });
+                    } catch (Exception e) {
+                        copy.putShort("data", (short) 0);
+                    }
                     newChain.add(copy);
+                    break;
+                case "minecraft:crimson_fence_gate":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    int in_wall_bit = ((ByteTag) blockStates.get(0)).parseValue();
+                    int open_bit = ((ByteTag) blockStates.get(1)).parseValue();
+                    int direction = ((IntTag) blockStates.get(2)).parseValue();
+                    copy.putShort("data", (short) (in_wall_bit << 3 | open_bit << 2 | direction & 0x3));
+                    newCrimsonFenceGate.add(copy);
+                    break;
+                case "minecraft:warped_fence_gate":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    in_wall_bit = ((ByteTag) blockStates.get(0)).parseValue();
+                    open_bit = ((ByteTag) blockStates.get(1)).parseValue();
+                    direction = ((IntTag) blockStates.get(2)).parseValue();
+                    copy.putShort("data", (short) (in_wall_bit << 3 | open_bit << 2 | direction & 0x3));
+                    newWarpedFenceGate.add(copy);
+                    break;
+                case "minecraft:warped_button":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    int button_pressed_bit = ((ByteTag) blockStates.get(0)).parseValue();
+                    int facing_direction = ((IntTag) blockStates.get(1)).parseValue();
+                    copy.putShort("data", (short) (button_pressed_bit << 3 | facing_direction & 0x7));
+                    newwarped_button.add(copy);
+                    break;
+                case "minecraft:crimson_button":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    button_pressed_bit = ((ByteTag) blockStates.get(0)).parseValue();
+                    facing_direction = ((IntTag) blockStates.get(1)).parseValue();
+                    copy.putShort("data", (short) (button_pressed_bit << 3 | facing_direction & 0x7));
+                    newcrimson_button.add(copy);
                     break;
             }
         }
@@ -356,9 +413,30 @@ public class RuntimeBlockStateConvertOld {
                     }
                     newTagList.add(copy);
                 }
-            } else {*/
+            }*/
+            /*if (name.equals("minecraft:warped_pressure_plate")) {
+                for (CompoundTag block : newWarpedPressurePlate.getAll()) {
+                    block.putInt("version", v);
+                    newTagList.add(block);
+                }
+            } else if (name.equals("minecraft:crimson_pressure_plate")) {
+                for (CompoundTag block : newCrimsonPressurePlate.getAll()) {
+                    block.putInt("version", v);
+                    newTagList.add(block);
+                }
+            } else */if (name.equals("minecraft:warped_button")) {
+                for (CompoundTag block : newwarped_button.getAll()) {
+                    block.putInt("version", v);
+                    newTagList.add(block);
+                }
+            } else if (name.equals("minecraft:crimson_button")) {
+                for (CompoundTag block : newcrimson_button.getAll()) {
+                    block.putInt("version", v);
+                    newTagList.add(block);
+                }
+            } else {
                 newTagList.add(tag);
-            //}
+            }
         }
         /*for (CompoundTag block : newDecoratedPot.getAll()) {
             block.putInt("version", v);
