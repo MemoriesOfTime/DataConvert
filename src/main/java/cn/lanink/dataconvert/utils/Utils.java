@@ -4,14 +4,25 @@ import cn.nukkit.nbt.NBTIO;
 import cn.nukkit.nbt.tag.*;
 import org.cloudburstmc.nbt.*;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteOrder;
+import java.util.Base64;
 
 /**
  * @author LT_Name
  */
 public class Utils {
+
+    public static NbtMap base64ToNbt(String base64) {
+        byte[] nbtBytes = Base64.getDecoder().decode(base64);
+        try (NBTInputStream stream = NbtUtils.createReaderLE(new ByteArrayInputStream(nbtBytes))) {
+            return (NbtMap) stream.readTag();
+        } catch (Exception e) {
+            throw new AssertionError("Unable to decode NBT value", e);
+        }
+    }
 
     public static NbtMap compoundTag2NbtMap(CompoundTag compoundTag) {
         NbtMapBuilder builder = NbtMap.builder();

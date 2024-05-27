@@ -20,8 +20,8 @@ import java.util.zip.GZIPInputStream;
  */
 @Log4j2
 public class RuntimeBlockStateConvert {
-    public static void convert(int oldBlockStatesVersion, int targetBlockStatesVersion) throws IOException {
 
+    public static void convert(int oldBlockStatesVersion, int targetBlockStatesVersion) throws IOException {
         //更新判断的基础数据
         ListTag<CompoundTag> oldBaseListTag;
         try (InputStream stream = new FileInputStream("src/main/resources/Target_Data/runtime_block_states_" + oldBlockStatesVersion + ".dat")) {
