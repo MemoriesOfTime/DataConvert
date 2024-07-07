@@ -5,23 +5,18 @@ import cn.nukkit.nbt.NBTIO;
 import cn.nukkit.nbt.tag.*;
 import com.google.common.base.Preconditions;
 import com.google.common.io.ByteStreams;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.extern.log4j.Log4j2;
 
 import java.io.*;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.zip.GZIPInputStream;
 
 @Log4j2
 public class RuntimeBlockStateConvertOld {
 
     public static void main(String[] args) throws IOException {
-        /*convert(419);
+        convert(419);
         convert(428);
         convert(440);
         convert(448);
@@ -35,8 +30,17 @@ public class RuntimeBlockStateConvertOld {
         convert(567);
         convert(575);
         convert(582);
-        convert(589);*/
+        /*convert(589);
         convert(594);
+        convert(618);
+        convert(622);
+        convert(630);
+        convert(649);
+        convert(662);
+        convert(671);
+        convert(685);*/
+
+
         System.exit(0);
     }
 
@@ -50,7 +54,6 @@ public class RuntimeBlockStateConvertOld {
             throw new AssertionError("Unable to locate runtime_block_states_" + oldBlockStatesVersion + ".dat", e);
         }
 
-        Int2ObjectMap<String> blockIdToPersistenceName = new Int2ObjectOpenHashMap<>();
         Map<String, Integer> persistenceNameToBlockId = new LinkedHashMap<>();
         try (InputStream stream = new FileInputStream("src/main/resources/block_ids.csv")) {
             int count = 0;
@@ -66,7 +69,6 @@ public class RuntimeBlockStateConvertOld {
                     Preconditions.checkArgument(parts.length == 2 || parts[0].matches("^[0-9]+$"));
                     if (parts.length > 1 && parts[1].startsWith("minecraft:")) {
                         int id = Integer.parseInt(parts[0]);
-                        blockIdToPersistenceName.put(id, parts[1]);
                         persistenceNameToBlockId.put(parts[1], id);
                     }
                 }
@@ -93,7 +95,7 @@ public class RuntimeBlockStateConvertOld {
                         Integer id = persistenceNameToBlockId.getOrDefault(name, -1);
                         tag.putInt("id", id);
                         if (id == -1) {
-                            log.error(oldBlockStatesVersion + " Unable to find block id for " + name);
+                            //log.error(oldBlockStatesVersion + " Unable to find block id for " + name);
                         }
                         tags.add(tag);
                     }
@@ -117,7 +119,7 @@ public class RuntimeBlockStateConvertOld {
         }
 
         for (CompoundTag compoundTag : tags) {
-            log.info(compoundTag.toSNBT());
+            //log.info(compoundTag.toSNBT());
         }
 
         ListTag<CompoundTag> newTagList = new ListTag<>();
@@ -152,6 +154,37 @@ public class RuntimeBlockStateConvertOld {
         ListTag<CompoundTag> newwarped_button = new ListTag<>(); //诡异木按钮
         ListTag<CompoundTag> newcrimson_button = new ListTag<>(); //绯红木按钮
 
+        ListTag<CompoundTag> new_crimson_slab = new ListTag<>(); //绯红木台阶
+        ListTag<CompoundTag> new_warped_slab = new ListTag<>(); //诡异木台阶
+
+        ListTag<CompoundTag> new_crimson_double_slab = new ListTag<>();
+        ListTag<CompoundTag> new_warped_double_slab = new ListTag<>();
+
+        ListTag<CompoundTag> new_polished_blackstone_brick_stairs = new ListTag<>();
+        ListTag<CompoundTag> new_blackstone_stairs = new ListTag<>();
+
+        ListTag<CompoundTag> new_blackstone_slab = new ListTag<>();
+        ListTag<CompoundTag> new_blackstone_double_slab = new ListTag<>();
+        ListTag<CompoundTag> new_polished_blackstone_brick_slab = new ListTag<>();
+        ListTag<CompoundTag> new_polished_blackstone_brick_double_slab = new ListTag<>();
+        ListTag<CompoundTag> new_twisting_vines = new ListTag<>();
+
+        ListTag<CompoundTag> new_polished_blackstone_stairs = new ListTag<>();
+        ListTag<CompoundTag> new_polished_blackstone_slab = new ListTag<>();
+        ListTag<CompoundTag> new_polished_blackstone_double_slab = new ListTag<>();
+        ListTag<CompoundTag> new_polished_blackstone_pressure_plate = new ListTag<>();
+
+        ListTag<CompoundTag> new_polished_blackstone_button = new ListTag<>();
+        ListTag<CompoundTag> new_polished_blackstone_wall = new ListTag<>();
+
+        ListTag<CompoundTag> new_warped_hyphae = new ListTag<>();
+        ListTag<CompoundTag> new_crimson_hyphae = new ListTag<>();
+
+        ListTag<CompoundTag> new_stripped_crimson_hyphae = new ListTag<>();
+        ListTag<CompoundTag> new_stripped_warped_hyphae = new ListTag<>();
+
+        ListTag<CompoundTag> new_flower = new ListTag<>();
+
         for (CompoundTag block : tags) {
             String name = block.getString("name");
             //额外添加
@@ -176,22 +209,89 @@ public class RuntimeBlockStateConvertOld {
                 copy.putShort("data", (short) data);
                 newDecoratedPot.add(copy);
             }
+
+            ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+            CompoundTag copy = block.copy();
             switch (name.toLowerCase()) {
+                case "minecraft:poppy":
+                    copy.putInt("id", 38);
+                    copy.putShort("data", 0);
+                    new_flower.add(copy);
+
+                    for (int i=11; i<=15; i++) {
+                        CompoundTag copy1 = copy.copy();
+                        copy1.putInt("id", 38);
+                        copy1.putShort("data", i);
+                        new_flower.add(copy1);
+                    }
+                    break;
+                case "minecraft:blue_orchid":
+                    copy.putInt("id", 38);
+                    copy.putShort("data", 1);
+                    new_flower.add(copy);
+                    break;
+                case "minecraft:allium":
+                    copy.putInt("id", 38);
+                    copy.putShort("data", 2);
+                    new_flower.add(copy);
+                    break;
+                case "minecraft:azure_bluet":
+                    copy.putInt("id", 38);
+                    copy.putShort("data", 3);
+                    new_flower.add(copy);
+                    break;
+                case "minecraft:red_tulip":
+                    copy.putInt("id", 38);
+                    copy.putShort("data", 4);
+                    new_flower.add(copy);
+                    break;
+                case "minecraft:orange_tulip":
+                    copy.putInt("id", 38);
+                    copy.putShort("data", 5);
+                    new_flower.add(copy);
+                    break;
+                case "minecraft:white_tulip":
+                    copy.putInt("id", 38);
+                    copy.putShort("data", 6);
+                    new_flower.add(copy);
+                    break;
+                case "minecraft:pink_tulip":
+                    copy.putInt("id", 38);
+                    copy.putShort("data", 7);
+                    new_flower.add(copy);
+                    break;
+                case "minecraft:oxeye_daisy":
+                    copy.putInt("id", 38);
+                    copy.putShort("data", 8);
+                    new_flower.add(copy);
+                    break;
+                case "minecraft:cornflower":
+                    copy.putInt("id", 38);
+                    copy.putShort("data", 9);
+                    new_flower.add(copy);
+                    break;
+                case "minecraft:lily_of_the_valley":
+                    copy.putInt("id", 38);
+                    copy.putShort("data", 10);
+                    new_flower.add(copy);
+                    break;
                 case "minecraft:crimson_pressure_plate":
-                    ArrayList<Tag> blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
-                    CompoundTag copy = block.copy();
                     IntTag directionTag = (IntTag) blockStates.get(0);
                     copy.putShort("data", directionTag.getData());
                     newCrimsonPressurePlate.add(copy);
                     break;
                 case "minecraft:warped_pressure_plate":
-                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
                     copy = block.copy();
                     directionTag = (IntTag) blockStates.get(0);
                     copy.putShort("data", directionTag.getData());
                     newWarpedPressurePlate.add(copy);
                     break;
-                case "minecraft:mangrove_planks":
+                case "minecraft:polished_blackstone_pressure_plate":
+                    copy = block.copy();
+                    copy.putShort("data", ((IntTag) blockStates.get(0)).getData());
+                    new_polished_blackstone_pressure_plate.add(copy);
+                    break;
+                /*case "minecraft:mangrove_planks":
                     copy = block.copy();
                     copy.putShort("data", 0);
                     newMangrovePlanks.add(copy);
@@ -223,6 +323,30 @@ public class RuntimeBlockStateConvertOld {
                     data = weirdoDirection & 0x3 | upsideDownBit << 2;
                     copy.putShort("data", data);
                     newWarpedStairs.add(copy);
+                    break;
+                case "minecraft:polished_blackstone_brick_stairs":
+                    copy = block.copy();
+                    upsideDownBit = ((ByteTag) blockStates.get(0)).getData();
+                    weirdoDirection = ((IntTag) blockStates.get(1)).getData();
+                    data = weirdoDirection & 0x3 | upsideDownBit << 2;
+                    copy.putShort("data", data);
+                    new_polished_blackstone_brick_stairs.add(copy);
+                    break;
+                case "minecraft:blackstone_stairs":
+                    copy = block.copy();
+                    upsideDownBit = ((ByteTag) blockStates.get(0)).getData();
+                    weirdoDirection = ((IntTag) blockStates.get(1)).getData();
+                    data = weirdoDirection & 0x3 | upsideDownBit << 2;
+                    copy.putShort("data", data);
+                    new_blackstone_stairs.add(copy);
+                    break;
+                case "minecraft:polished_blackstone_stairs":
+                    copy = block.copy();
+                    upsideDownBit = ((ByteTag) blockStates.get(0)).getData();
+                    weirdoDirection = ((IntTag) blockStates.get(1)).getData();
+                    data = weirdoDirection & 0x3 | upsideDownBit << 2;
+                    copy.putShort("data", data);
+                    new_polished_blackstone_stairs.add(copy);
                     break;
                 case "minecraft:stripped_cherry_log":
                     copy = block.copy();
@@ -305,6 +429,86 @@ public class RuntimeBlockStateConvertOld {
                     }
                     newChain.add(copy);
                     break;
+                    */
+                case "minecraft:warped_hyphae":
+                    copy = block.copy();
+                    try {
+                        String pillar_axis = ((StringTag) blockStates.get(0)).parseValue();
+                        copy.putShort("data", (short) switch (pillar_axis) {
+                            case "x" -> 1;
+                            case "z" -> 2;
+                            default -> 0; //y
+                        });
+                    } catch (Exception e) {
+                        copy.putShort("data", (short) 0);
+                        log.error("Unable to find pillar_axis for warped_hyphae");
+                    }
+                    new_warped_hyphae.add(copy);
+                    break;
+                case "minecraft:crimson_hyphae":
+                    copy = block.copy();
+                    try {
+                        String pillar_axis = ((StringTag) blockStates.get(0)).parseValue();
+                        copy.putShort("data", (short) switch (pillar_axis) {
+                            case "x" -> 1;
+                            case "z" -> 2;
+                            default -> 0; //y
+                        });
+                    } catch (Exception e) {
+                        copy.putShort("data", (short) 0);
+                        log.error("Unable to find pillar_axis for crimson_hyphae");
+                    }
+                    new_crimson_hyphae.add(copy);
+                    break;
+                case "minecraft:stripped_crimson_hyphae":
+                    copy = block.copy();
+                    try {
+                        StringTag stringTag = null;
+                        if (blockStates.get(0) instanceof StringTag) {
+                            stringTag = (StringTag) blockStates.get(0);
+                        } else if (blockStates.get(1) instanceof StringTag) {
+                            if (((IntTag)blockStates.get(0)).parseValue() > 0) {
+                                continue;
+                            }
+                            stringTag = (StringTag) blockStates.get(1);
+                        }
+                        String pillar_axis = stringTag.parseValue();
+                        copy.putShort("data", (short) switch (pillar_axis) {
+                            case "x" -> 1;
+                            case "z" -> 2;
+                            default -> 0; //y
+                        });
+                    } catch (Exception e) {
+                        copy.putShort("data", (short) 0);
+                        log.error("Unable to find pillar_axis for stripped_crimson_hyphae");
+                    }
+                    new_stripped_crimson_hyphae.add(copy);
+                    break;
+                case "minecraft:stripped_warped_hyphae":
+                    copy = block.copy();
+                    try {
+                        StringTag stringTag = null;
+                        if (blockStates.get(0) instanceof StringTag) {
+                            stringTag = (StringTag) blockStates.get(0);
+                        } else if (blockStates.get(1) instanceof StringTag) {
+                            if (((IntTag)blockStates.get(0)).parseValue() > 0) {
+                                continue;
+                            }
+                            stringTag = (StringTag) blockStates.get(1);
+                        }
+                        String pillar_axis = stringTag.parseValue();
+                        copy.putShort("data", (short) switch (pillar_axis) {
+                            case "x" -> 1;
+                            case "z" -> 2;
+                            default -> 0; //y
+                        });
+                    } catch (Exception e) {
+                        copy.putShort("data", (short) 0);
+                        log.error("Unable to find pillar_axis for stripped_warped_hyphae");
+                    }
+                    new_stripped_warped_hyphae.add(copy);
+                    break;
+                /*
                 case "minecraft:crimson_fence_gate":
                     copy = block.copy();
                     blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
@@ -339,6 +543,82 @@ public class RuntimeBlockStateConvertOld {
                     copy.putShort("data", (short) (button_pressed_bit << 3 | facing_direction & 0x7));
                     newcrimson_button.add(copy);
                     break;
+                case "minecraft:polished_blackstone_button":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    button_pressed_bit = ((ByteTag) blockStates.get(0)).parseValue();
+                    facing_direction = ((IntTag) blockStates.get(1)).parseValue();
+                    copy.putShort("data", (short) (button_pressed_bit << 3 | facing_direction & 0x7));
+                    new_polished_blackstone_button.add(copy);
+                    break;
+                case "minecraft:crimson_slab":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    copy.putShort("data", ((ByteTag) blockStates.get(0)).parseValue());
+                    new_crimson_slab.add(copy);
+                    break;
+                case "minecraft:warped_slab":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    copy.putShort("data", ((ByteTag) blockStates.get(0)).parseValue());
+                    new_warped_slab.add(copy);
+                    break;
+                case "minecraft:crimson_double_slab":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    copy.putShort("data", ((ByteTag) blockStates.get(0)).parseValue());
+                    new_crimson_double_slab.add(copy);
+                    break;
+                case "minecraft:warped_double_slab":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    copy.putShort("data", ((ByteTag) blockStates.get(0)).parseValue());
+                    new_warped_double_slab.add(copy);
+                    break;
+                case "minecraft:blackstone_slab":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    copy.putShort("data", ((ByteTag) blockStates.get(0)).parseValue());
+                    new_blackstone_slab.add(copy);
+                    break;
+                case "minecraft:blackstone_double_slab":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    copy.putShort("data", ((ByteTag) blockStates.get(0)).parseValue());
+                    new_blackstone_double_slab.add(copy);
+                    break;
+                case "minecraft:polished_blackstone_brick_slab":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    copy.putShort("data", ((ByteTag) blockStates.get(0)).parseValue());
+                    new_polished_blackstone_brick_slab.add(copy);
+                    break;
+                case "minecraft:polished_blackstone_brick_double_slab":
+                    copy = block.copy();
+                    blockStates = new ArrayList<>(block.getCompound("states").getAllTags());
+                    copy.putShort("data", ((ByteTag) blockStates.get(0)).parseValue());
+                    new_polished_blackstone_brick_double_slab.add(copy);
+                    break;*/
+                case "minecraft:twisting_vines":
+                    copy = block.copy();
+                    copy.putShort("data", ((IntTag) blockStates.get(0)).parseValue());
+                    new_twisting_vines.add(copy);
+                    break;
+                /*case "minecraft:polished_blackstone_slab":
+                    copy = block.copy();
+                    copy.putShort("data", ((ByteTag) blockStates.get(0)).parseValue());
+                    new_polished_blackstone_slab.add(copy);
+                    break;
+                case "minecraft:polished_blackstone_double_slab":
+                    copy = block.copy();
+                    copy.putShort("data", ((ByteTag) blockStates.get(0)).parseValue());
+                    new_polished_blackstone_double_slab.add(copy);
+                    break;*/
+                case "minecraft:polished_blackstone_wall":
+                    copy = block.copy();
+                    copy.putShort("data", 0);
+                    new_polished_blackstone_wall.add(copy);
+                    break;
             }
         }
 
@@ -356,33 +636,6 @@ public class RuntimeBlockStateConvertOld {
                 }
             }
 
-            /*if (name.equals("minecraft:chain")) {
-                for (CompoundTag block : newChain.getAll()) {
-                    block.putInt("version", v);
-                    newTagList.add(block);
-                }
-            } else if (name.equals("minecraft:crimson_pressure_plate")) {
-                for (CompoundTag block : newCrimsonPressurePlate.getAll()) {
-                    block.putInt("version", tag.getInt("version"));
-                    newTagList.add(block);
-                }
-            } else if (name.equals("minecraft:warped_pressure_plate")) {
-                for (CompoundTag block : newWarpedPressurePlate.getAll()) {
-                    block.putInt("version", tag.getInt("version"));
-                    newTagList.add(block);
-                }
-            }*/
-            /*if (name.equals("minecraft:bee_nest")) {
-                for (CompoundTag block : newBeeNest.getAll()) {
-                    block.putInt("version", tag.getInt("version"));
-                    newTagList.add(block);
-                }
-            } else if (name.equals("minecraft:beehive")) {
-                for (CompoundTag block : newBeehive.getAll()) {
-                    block.putInt("version", tag.getInt("version"));
-                    newTagList.add(block);
-                }
-            } */
             /*if (name.equals("minecraft:crimson_stairs")) {
                 for (CompoundTag block : newCrimsonStairs.getAll()) {
                     CompoundTag copy;
@@ -414,73 +667,49 @@ public class RuntimeBlockStateConvertOld {
                     newTagList.add(copy);
                 }
             }*/
-            /*if (name.equals("minecraft:warped_pressure_plate")) {
-                for (CompoundTag block : newWarpedPressurePlate.getAll()) {
-                    block.putInt("version", v);
-                    newTagList.add(block);
-                }
-            } else if (name.equals("minecraft:crimson_pressure_plate")) {
-                for (CompoundTag block : newCrimsonPressurePlate.getAll()) {
-                    block.putInt("version", v);
-                    newTagList.add(block);
-                }
-            } else */if (name.equals("minecraft:warped_button")) {
-                for (CompoundTag block : newwarped_button.getAll()) {
-                    block.putInt("version", v);
-                    newTagList.add(block);
-                }
-            } else if (name.equals("minecraft:crimson_button")) {
-                for (CompoundTag block : newcrimson_button.getAll()) {
-                    block.putInt("version", v);
-                    newTagList.add(block);
-                }
-            } else {
-                newTagList.add(tag);
-            }
-        }
-        /*for (CompoundTag block : newDecoratedPot.getAll()) {
-            block.putInt("version", v);
-            newTagList.add(block);
-        }*/
 
-        /*for (CompoundTag block : newMangrovePlanks.getAll()) {
-            block.putInt("version", v);
-            newTagList.add(block);
-        }
-        for (CompoundTag block : newBambooPlanks.getAll()) {
-            block.putInt("version", v);
-            newTagList.add(block);
-        }
-        for (CompoundTag block : newCherryPlanks.getAll()) {
-            block.putInt("version", v);
-            newTagList.add(block);
-        }*/
-        /*for (CompoundTag block : newStrippedCherryLog.getAll()) {
-            block.putInt("version", v);
-            newTagList.add(block);
-        }
-        for (CompoundTag block : newCherryLog.getAll()) {
-            block.putInt("version", v);
-            newTagList.add(block);
-        }
-        for (CompoundTag block : newStrippedCherryWood.getAll()) {
-            block.putInt("version", v);
-            newTagList.add(block);
-        }
-        for (CompoundTag block : newCherryWood.getAll()) {
-            block.putInt("version", v);
-            newTagList.add(block);
-        }
-        for (CompoundTag block : newCherrySapling.getAll()) {
-            block.putInt("version", v);
-            newTagList.add(block);
-        }
-        for (CompoundTag block : newCherryLeaves.getAll()) {
-            block.putInt("version", v);
-            newTagList.add(block);
-        }*/
+            /*if (name.equals("minecraft:stripped_crimson_hyphae")) {
+                for (CompoundTag block : new_stripped_crimson_hyphae.getAll()) {
+                    block.putInt("version", v);
+                    newTagList.add(block);
+                }
+            } else if (name.equals("minecraft:stripped_warped_hyphae")) {
+                for (CompoundTag block : new_stripped_warped_hyphae.getAll()) {
+                    block.putInt("version", v);
+                    newTagList.add(block);
+                }
+            } else {*/
+                if (tag.getInt("id") == 38) {
+                    continue;
+                }
 
-        OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("src/main/resources/Target_Data/n_runtime_block_states_" + oldBlockStatesVersion + ".dat"));
+                //重复检查
+                int runtimeId = tag.getInt("runtimeId");
+                boolean isDuplicate = false;
+                for (CompoundTag tag1 : newTagList.getAll()) {
+                    if (tag1.getInt("runtimeId") == runtimeId
+                            && tag1.getString("name").equals(tag.getString("name"))
+                            && tag1.getInt("id") == tag.getInt("id")
+                            && tag1.getInt("data") == tag.getInt("data")) {
+                        isDuplicate = true;
+                        log.warn("Duplicate : old:{}\nnew:{}", tag1, tag);
+                    }
+                }
+                if (!isDuplicate) {
+                    newTagList.add(tag);
+                }
+            //}
+        }
+
+        for (CompoundTag block : new_flower.getAll()) {
+            block.putInt("version", v);
+            newTagList.add(block);
+        }
+
+        //按照runtimeId排序
+        newTagList.getAllUnsafe().sort(Comparator.comparingInt(o -> o.getInt("runtimeId")));
+
+        OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("src/main/resources/Target_Data/new/runtime_block_states_" + oldBlockStatesVersion + ".dat"));
         NBTIO1.writeGZIPCompressed(newTagList, outputStream, ByteOrder.BIG_ENDIAN);
 
         ListTag<CompoundTag> originTagList = new ListTag<>();

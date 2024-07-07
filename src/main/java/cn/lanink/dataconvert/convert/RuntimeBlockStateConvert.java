@@ -5,8 +5,6 @@ import cn.lanink.dataconvert.utils.Utils;
 import cn.nukkit.nbt.NBTIO;
 import cn.nukkit.nbt.tag.*;
 import com.google.common.base.Preconditions;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.blockstateupdater.BlockStateUpdaters;
 
@@ -42,7 +40,6 @@ public class RuntimeBlockStateConvert {
             nkxTag = new ListTag<>();
         }
 
-        Int2ObjectMap<String> blockIdToPersistenceName = new Int2ObjectOpenHashMap<>();
         Map<String, Integer> persistenceNameToBlockId = new LinkedHashMap<>();
         try (InputStream stream = new FileInputStream("src/main/resources/block_ids.csv")) {
             int count = 0;
@@ -58,7 +55,6 @@ public class RuntimeBlockStateConvert {
                     Preconditions.checkArgument(parts.length == 2 || parts[0].matches("^[0-9]+$"));
                     if (parts.length > 1 && parts[1].startsWith("minecraft:")) {
                         int id = Integer.parseInt(parts[0]);
-                        blockIdToPersistenceName.put(id, parts[1]);
                         persistenceNameToBlockId.put(parts[1], id);
                     }
                 }
@@ -94,6 +90,13 @@ public class RuntimeBlockStateConvert {
                 Tag tag1 = NBTIO.readTag(new BufferedInputStream(new GZIPInputStream(stream)), ByteOrder.BIG_ENDIAN, false);
                 ListTag<CompoundTag> blocks = ((CompoundTag) tag1).getList("blocks", CompoundTag.class);
                 for (CompoundTag compoundTag : blocks.getAll()) {
+                    String name = compoundTag.getString("name").toLowerCase();
+                    Integer id = persistenceNameToBlockId.getOrDefault(name, -1);
+                    if (id != -1) {
+                        compoundTag.putInt("id", id);
+                    } else {
+                        log.error("Unable to find block id for " + name);
+                    }
                     compoundTag.remove("network_id");
                     compoundTag.remove("name_hash");
                     compoundTag.remove("block_id");
@@ -106,11 +109,11 @@ public class RuntimeBlockStateConvert {
         }
 
         //更新方块数据到新版本
-        ListTag<CompoundTag> listTag = new ListTag<>();
+        ListTag<CompoundTag> cache = new ListTag<>();
         for (CompoundTag compoundTag : oldBaseListTag.getAll()) {
-            listTag.add(Utils.nbtMap2CompoundTag(BlockStateUpdaters.updateBlockState(Utils.compoundTag2NbtMap(compoundTag),  compoundTag.getInt("version"))));
+            cache.add(Utils.nbtMap2CompoundTag(BlockStateUpdaters.updateBlockState(Utils.compoundTag2NbtMap(compoundTag),  compoundTag.getInt("version"))));
         }
-        oldBaseListTag = listTag;
+        oldBaseListTag = cache;
 
         ListTag<CompoundTag> newTagList = new ListTag<>();
         newTagList.setAll(nkxTag.getAll());
@@ -209,6 +212,27 @@ public class RuntimeBlockStateConvert {
                 log.error("Not found : {}", tag.toSNBT());
             }
         }
+
+        //新方块
+        /*HashSet<String> set = new HashSet<>();
+        for (CompoundTag tag : tags) {
+            String name = tag.getString("name");
+            boolean has = false;
+            for (CompoundTag block : newTagList.getAll()) {
+                if (block.getString("name").equals(name)) {
+                    has = true;
+                    break;
+                }
+            }
+            if (!has && !set.contains(name)) {
+                set.add(name);
+                CompoundTag copy = tag.copy();
+                copy.putShort("data", (short) 0);
+            }
+        }*/
+
+        //按照runtimeId排序
+        newTagList.getAllUnsafe().sort(Comparator.comparingInt(o -> o.getInt("runtimeId")));
 
         OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("src/main/resources/Target_Data/runtime_block_states_" + targetBlockStatesVersion + ".dat"));
         NBTIO1.writeGZIPCompressed(newTagList, outputStream, ByteOrder.BIG_ENDIAN);

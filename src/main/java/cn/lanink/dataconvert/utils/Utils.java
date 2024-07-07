@@ -2,17 +2,19 @@ package cn.lanink.dataconvert.utils;
 
 import cn.nukkit.nbt.NBTIO;
 import cn.nukkit.nbt.tag.*;
+import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.nbt.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteOrder;
-import java.util.Base64;
+import java.util.*;
 
 /**
  * @author LT_Name
  */
+@Log4j2
 public class Utils {
 
     public static NbtMap base64ToNbt(String base64) {
@@ -70,10 +72,8 @@ public class Utils {
     public static CompoundTag nbtMap2CompoundTag(NbtMap nbtMap) {
         try {
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            try (NBTOutputStream nbtOutputStream = NbtUtils.createWriter(stream)) {
+            try (stream; NBTOutputStream nbtOutputStream = NbtUtils.createWriter(stream)) {
                 nbtOutputStream.writeTag(nbtMap);
-            } finally {
-                stream.close();
             }
             return NBTIO.read(stream.toByteArray(), ByteOrder.BIG_ENDIAN, false);
         } catch (IOException e) {
