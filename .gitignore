@@ -1,4 +1,8 @@
+logs/
+src/main/resources/ayear/output
+src/main/resources/Target_Data
 target/
+
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
